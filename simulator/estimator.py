@@ -33,7 +33,7 @@ class Estimator(torch.nn.Module):
 
     def __init__(self, phys_args, dtype, gts: list, init_vol, 
                  surface_index=None, cuda_chunk_size=100, dynamic_scene=None, 
-                 image_scale=1.0, pipeline=None, image_op=None):
+                 image_scale=1.0, pipeline=None, image_op=None, optimizer_multi=None):
         super(Estimator, self).__init__()
         self.pipeline = pipeline
         self.image_op = image_op
@@ -160,7 +160,10 @@ class Estimator(torch.nn.Module):
             elif param_name == "friction angle":
                 params.append({'params':self.friction_alpha, 'lr':info.get('init_lr', 1.0), 'name': param_name})
         # params.append({'params':self.init_omega, 'lr':info.get('init_lr', 1.5), 'name': "omega"})
-        self.optimizer = torch.optim.Adam([*params],amsgrad=False)
+        if optimizer_multi is None:    
+            self.optimizer = torch.optim.Adam([*params],amsgrad=False)
+        else:
+            self.optimizer = optimizer_multi
         self.vel_optimizer = torch.optim.Adam([{'params': self.init_vel, 'lr': phys_args.vel_lr, 'name': 'velocity'}])
         self.lr_schedulers = {}
         for param_name, info in phys_args.params.items():

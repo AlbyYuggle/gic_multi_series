@@ -16,6 +16,7 @@ from scene.gaussian_model import BasicPointCloud
 
 
 def train(dataset, opt, pipe, testing_iterations, saving_iterations, pcd, d_xyz_list=None, fps=24, cam_info=None, grid_size=0.12):
+    testing_iterations = []
     gaussians = GaussianModel(dataset.sh_degree)
     scene = Scene(dataset, gaussians, resolution_scales=[dataset.res_scale], pcd=pcd, load_fix_pcd=True, cam_info=cam_info)
     if d_xyz_list:

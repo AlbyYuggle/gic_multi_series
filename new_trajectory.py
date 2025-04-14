@@ -231,6 +231,7 @@ if __name__ == "__main__":
     scene = train_gs_with_fixed_pcd(vol, dataset, op.extract(gs_args), pipeline.extract(gs_args), gs_args.test_iterations + list(range(10000, 40001, 1000)), gs_args.save_iterations, 
                             d_xyz_list, estimation_params.fps, force_train=getattr(gs_args, 'force_train', False), grid_size=estimation_params.density_grid_size)
 
+    print(vol.shape)
     torch.cuda.empty_cache()
     # 2. Generate new trajectory
     simulator = Simulator(phys_args, vol)
