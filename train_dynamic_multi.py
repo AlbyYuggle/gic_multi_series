@@ -54,11 +54,11 @@ def prepare_gt(dataset: ModelParams, iteration: int, pipeline: PipelineParams, p
             grid_coords = torch.stack(torch.meshgrid(*grid_ids, indexing='ij'), dim=-1).reshape(-1, 3) * filling_grid_size
             grid_coords = grid_coords.to(xyzt)
             init_inner_points = grid_coords + bbox_mins.reshape(1, 3)
-            curr_views = [view for view in views if view.fid == fid]  
+            curr_views = [view for view in views if view.fid == fid]
             for viewpoint_cam in tqdm(curr_views, desc="Rendering progress"):
                 results = render(viewpoint_cam, gaussians, pipeline, background, d_xyz, d_rotation, d_scaling, False)
                 depth = results["depth"][0]
-                render_mask = torch.logical_and(results["render"].sum(0) != 0, 
+                render_mask = torch.logical_and(results["render"].sum(0) != 0,
                                                 viewpoint_cam.original_image.sum(0) != 0)
                 pix_w, pix_h, pix_d = viewpoint_cam.pw2pix(init_inner_points)
                 # remove points that are outside the image space
@@ -158,7 +158,7 @@ def prepare_gt(dataset: ModelParams, iteration: int, pipeline: PipelineParams, p
                     vol_surface_mask = surface_mask[internal_mask]
                     vol_surface = torch.arange(vol_surface_mask.shape[0]).to(vol.device).to(torch.int64)[vol_surface_mask]
                     write_particles(vol, 0, dataset.model_path, 'static')
-        
+
         train_cams, test_cams, cameras_extent = scene.overwrite_alphas(pipeline, dataset, deform)
         cam_info = {
             "train_cams": train_cams,
@@ -187,10 +187,10 @@ def backward(estimator: Estimator):
     max_f = estimator.max_f
     pbar = trange(max_f)
     pbar.set_description(f"[Backward]")
-    
+
     estimator.loss.grad[None] = 1
     estimator.clear_grads()
-    
+
     for ri in pbar:
         i = max_f - 1 - ri
         if i > 0:
@@ -219,7 +219,7 @@ def train(estimator: Estimator, phys_args, max_f=None):
 
     if max_f is not None:
         estimator.max_f = max_f
-    
+
     for stage, train_param in enumerate(zip([max_f], [iter_cnt])):
         max_f, iter_cnt = train_param
         if max_f is not None:
@@ -255,13 +255,13 @@ def train(estimator: Estimator, phys_args, max_f=None):
             losses.append(estimator.loss[None] + estimator.image_loss)
             backward(estimator)
             estimator.step(i)
-            
+
             # 3. record loss and save best params
             min_idx = losses.index(min(losses))
             best_params = estimated_params[min_idx]
             print("Best params: ", best_params, 'in {} iteration'.format(min_idx))
             print("Min loss: {}".format(losses[min_idx]))
-    
+
     if estimator.stage[None] == Estimator.velocity_stage and len(losses) > 0:
         min_idx = losses.index(min(losses))
         best_params = estimated_params[min_idx]
@@ -279,7 +279,7 @@ def train_multi(estimators, phys_args_list, max_f=None):
 
     if max_f is not None:
         estimators[0].max_f = max_f
-    
+
     for stage, train_param in enumerate(zip([max_f], [iter_cnt])):
         max_f, iter_cnt = train_param
         if max_f is not None:
@@ -319,13 +319,13 @@ def train_multi(estimators, phys_args_list, max_f=None):
 
             for j in range(10):
                 estimators[j].optimizer = estimators[seq_no].optimizer
-            
+
             # 3. record loss and save best params
             min_idx = losses.index(min(losses))
             best_params = estimated_params[min_idx]
             print("Best params: ", best_params, 'in {} iteration'.format(min_idx))
             print("Min loss: {}".format(losses[min_idx]))
-    
+
     if estimator.stage[None] == Estimator.velocity_stage and len(losses) > 0:
         min_idx = losses.index(min(losses))
         best_params = estimated_params[min_idx]
@@ -362,7 +362,7 @@ def export_result(dataset, phys_args, estimator: Estimator, losses, estimated_pa
             nu = float((estimator.get_nu()).detach().cpu().numpy())
         mat_params['E'] = E
         mat_params['nu'] = nu
-    
+
     if m == MPMSimulator.drucker_prager:
         mat_params['friction_alpha'] = best_params['friction angle']
 
@@ -372,18 +372,18 @@ def export_result(dataset, phys_args, estimator: Estimator, losses, estimated_pa
         if estimator.simulator.non_newtonian == 1:
             eta = best_params['plastic viscosity']
             mat_params['plastic_viscosity'] = eta
-    
+
     pred['mat_params'] = mat_params
     for attr in save_attr:
         pred[attr] = getattr(phys_args, attr)
-    
+
     with open(os.path.join(dataset.model_path, f'{config_id}-pred.json'), 'w') as f:
         json.dump(pred, f, indent=4)
 
 def get_args(parser: ArgumentParser, configpath):
     cmdlne_string = sys.argv[1:]
     cfgfile_string = "Namespace()"
-    args_cmdline = parser.parse_args(cmdlne_string)
+    args_cmdline, unk = parser.parse_known_args(cmdlne_string)
     # config_file = args_cmdline.config_file
     model_path = None
     config_data = None
@@ -396,8 +396,8 @@ def get_args(parser: ArgumentParser, configpath):
             phys_dict = config_data.get("physics", None)
             phys_args = Namespace(**phys_dict)
             model_path = gs_dict.get("model_path", None)
-            
-    except Exception as e:  
+
+    except Exception as e:
         print('Parsing config file error')
 
     if model_path is None:
@@ -409,7 +409,7 @@ def get_args(parser: ArgumentParser, configpath):
             print("Config file found: {}".format(cfgfilepath))
             cfgfile_string = cfg_file.read()
     # except TypeError:
-    except Exception as e: 
+    except Exception as e:
         print("Config file not found at")
         pass
     args_cfgfile = eval(cfgfile_string)
@@ -438,10 +438,11 @@ if __name__ == "__main__":
     start_time = time.time()
 
     parser = ArgumentParser(description="Physical parameter estimation")
-    model = ModelParams(parser)#, sentinel=True)
+    #model = ModelParams(parser)#, sentinel=True)
     pipeline = PipelineParams(parser)
     op = OptimizationParams(parser)
     seq_no = sys.argv[-1]
+    print("Seq no ", seq_no )
     estimators = []
     phys_args_list = []
     gs_args_list = []
@@ -453,18 +454,23 @@ if __name__ == "__main__":
     config_id = None
     optimizer_multi = None
     for i in range(10):
-        configpath = f"data/dataset_multi_series/{seq_no}_{i}/config.json"
-        gs_args, phys_args = get_combined_args(parser, configpath)
+        configpath = f"data/MultiSeries/{seq_no}_{i}/config.json"
+        model = ModelParams(parser)
+
+        gs_args, phys_args = get_args(parser, configpath)
         config_id = phys_args.id
         print(phys_args)
         safe_state(gs_args.quiet)
 
         # 1. train def gs
         dataset = model.extract(gs_args)
+        print(dataset.source_path)
+        dataset.source_path = os.path.abspath(f"./data/MultiSeries/{seq_no}_{i}")
+        dataset.config_path = os.path.abspath(f"./data/MultiSeries/{seq_no}_{i}/config.json")
         if not check_gs_model(dataset.model_path, gs_args.save_iterations):
             training(dataset, op.extract(gs_args), pipeline.extract(gs_args), gs_args.test_iterations + list(range(10000, 40001, 1000)), gs_args.save_iterations)
         torch.cuda.empty_cache()
-        
+
         # 2. estimate velocity
         gts, vol, vol_densities, grid_size, volume_surface, cam_info = prepare_gt(model.extract(gs_args), gs_args.iteration, pipeline.extract(gs_args), phys_args)
         torch.cuda.empty_cache()
@@ -496,10 +502,10 @@ if __name__ == "__main__":
                 elif param_name == "plastic viscosity":
                     params.append({'params':plastic_viscosity, 'lr':info.get('init_lr', 0.05), 'name': param_name})
                 elif param_name == "friction angle":
-                    params.append({'params':friction_alpha, 'lr':info.get('init_lr', 1.0), 'name': param_name}) 
+                    params.append({'params':friction_alpha, 'lr':info.get('init_lr', 1.0), 'name': param_name})
             optimizer_multi = torch.optim.Adam([*params],amsgrad=False)
 
-        estimator = Estimator(phys_args, 'float32', gts, surface_index=volume_surface, init_vol=vol, dynamic_scene=None, 
+        estimator = Estimator(phys_args, 'float32', gts, surface_index=volume_surface, init_vol=vol, dynamic_scene=None,
                             image_scale=image_scale, pipeline=pipeline.extract(gs_args), image_op=op.extract(gs_args), optimizer_multi=optimizer_multi)
         estimator.set_stage(Estimator.velocity_stage)
         losses, e_s = train(estimator, phys_args, phys_args.vel_estimation_frames)
@@ -512,17 +518,17 @@ if __name__ == "__main__":
         cam_infos.append(cam_info)
         gts_list.append(gts)
         # 3. estimate physical parameters
-        # scene = train_gs_with_fixed_pcd(vol, dataset, op.extract(gs_args), 
-        #                                 pipeline.extract(gs_args), 
-        #                                 gs_args.test_iterations + list(range(10000, 40001, 1000)), 
+        # scene = train_gs_with_fixed_pcd(vol, dataset, op.extract(gs_args),
+        #                                 pipeline.extract(gs_args),
+        #                                 gs_args.test_iterations + list(range(10000, 40001, 1000)),
         #                                 gs_args.save_iterations, None, phys_args.fps, True,
         #                                 cam_info, phys_args.density_grid_size)
     for i in range(10):
-        scene = assign_gs_to_pcd(vols[i], vol_densities_list[i], datasets[i], op.extract(gs_args_list[i]), 
-                                        pipeline.extract(gs_args_list[i]), 
+        scene = assign_gs_to_pcd(vols[i], vol_densities_list[i], datasets[i], op.extract(gs_args_list[i]),
+                                        pipeline.extract(gs_args_list[i]),
                                         cam_infos[i], phys_args_list[i].density_grid_size)
         estimators[i].set_scene(scene)
-        
+
         estimators[i].set_stage(Estimator.physical_params_stage)
     max_f = len(gts_list[0])
     losses, e_s = train_multi(estimators, phys_args_list, max_f)
@@ -531,4 +537,3 @@ if __name__ == "__main__":
     print(config_id)
     export_result(datasets[0], phys_args_list[0], estimators[0], losses, e_s, config_id)
     print("consume time {}".format(time.time() - start_time))
-    
